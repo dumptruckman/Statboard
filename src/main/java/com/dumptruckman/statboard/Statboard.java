@@ -122,6 +122,10 @@ public class Statboard extends JavaPlugin implements Listener {
         Objective objective = scoreboard.getObjective(SIDEBOARD_OBJ);
         Score score = objective.getScore(Scores.TIME);
         int time = (int) (player.getWorld().getTime() / 1000);
+        time += 6;
+        if (time > 23) {
+            time -= 24;
+        }
         if (time == 0) {
             time = 24;
         }
