@@ -114,14 +114,18 @@ public class Statboard extends JavaPlugin implements Listener {
         Scoreboard scoreboard = getScoreboard(player);
         Objective objective = scoreboard.getObjective(SIDEBOARD_OBJ);
         Score score = objective.getScore(Scores.TICKS_PER_SECOND);
-        score.setScore((int) (player.getWorld().getTime() / 1000));
+        score.setScore(lastTPS);
     }
 
     private void updateTime(Player player) {
         Scoreboard scoreboard = getScoreboard(player);
         Objective objective = scoreboard.getObjective(SIDEBOARD_OBJ);
         Score score = objective.getScore(Scores.TIME);
-        score.setScore(lastTPS);
+        int time = (int) (player.getWorld().getTime() / 1000);
+        if (time == 0) {
+            time = 24;
+        }
+        score.setScore(time);
     }
 
     private boolean setupEconomy() {
