@@ -1,0 +1,5 @@
+name: Statboard
+main: com.dumptruckman.statboard.Statboard
+version: 1.0.0
+author: dumptruckman
+depend: [Factions,Vault,mcMMO,BattleTracker]
