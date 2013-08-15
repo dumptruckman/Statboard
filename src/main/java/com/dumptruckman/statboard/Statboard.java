@@ -11,6 +11,9 @@ import mc.alk.tracker.objects.Stat;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -265,5 +268,26 @@ public class Statboard extends JavaPlugin implements Listener {
 
     public Scoreboard getScoreboard(Player player) {
         return scoreboardMap.get(player);
+    }
+
+    @Override
+    public boolean onCommand(final CommandSender sender, final Command command, final String label, final String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only usable in game!");
+            return true;
+        }
+        if (args.length == 0) {
+            sender.sendMessage(ChatColor.RED + "Please try /sb toggle");
+            return true;
+        }
+        if (args[0].equalsIgnoreCase("toggle")) {
+            Player player = (Player) sender;
+            if (player.getScoreboard().equals(getScoreboard(player))) {
+                player.setScoreboard(getServer().getScoreboardManager().getNewScoreboard());
+            } else {
+                player.setScoreboard(getScoreboard(player));
+            }
+        }
+        return true;
     }
 }
