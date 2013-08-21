@@ -3,7 +3,9 @@ package com.dumptruckman.statboard;
 import com.gmail.nossr50.api.ExperienceAPI;
 import com.gmail.nossr50.datatypes.skills.SkillType;
 import com.massivecraft.factions.entity.Faction;
+import com.massivecraft.factions.entity.FactionColls;
 import com.massivecraft.factions.entity.UPlayer;
+import com.massivecraft.factions.event.FactionsEventDisband;
 import com.massivecraft.factions.event.FactionsEventMembershipChange;
 import mc.alk.tracker.Tracker;
 import mc.alk.tracker.TrackerInterface;
@@ -39,7 +41,7 @@ public class Statboard extends JavaPlugin implements Listener {
 
     private Economy economy;
     private TrackerInterface pvpTracker;
-    private TrackerInterface pveTracker;
+    //private TrackerInterface pveTracker;
 
     private final TicksPerSecondTask tpsTask = new TicksPerSecondTask(this, 30);
     private int lastTPS = 0;
@@ -79,7 +81,7 @@ public class Statboard extends JavaPlugin implements Listener {
         Tracker tracker = (Tracker) Bukkit.getPluginManager().getPlugin("BattleTracker");
         if (tracker != null){
             pvpTracker = Tracker.getInterface("pvp");
-            pveTracker = Tracker.getInterface("pve");
+            //pveTracker = Tracker.getInterface("pve");
         } else {
             getLogger().severe("BattleTracker not found!");
             getServer().getPluginManager().disablePlugin(this);
@@ -93,14 +95,17 @@ public class Statboard extends JavaPlugin implements Listener {
     private class ShowTPSTask extends BukkitRunnable {
         @Override
         public void run() {
-            lastTPS = tpsTask.getTicksPerSecond();
+            lastTPS = tpsTask.getTicksPerSecond() * 5; // * 5 makes this more like a percentage.
+            int numberOnline = Bukkit.getOnlinePlayers().length;
             for (Player player : Bukkit.getOnlinePlayers()) {
                 updateTps(player);
-                updateTime(player);
+                //updateTime(player);
                 updateBalance(player);
                 updateStats(player);
                 updateTracker(player);
                 updatePing(player);
+                updateFactionStats(player);
+                updatePlayersOnline(player, numberOnline);
             }
         }
     }
@@ -120,6 +125,7 @@ public class Statboard extends JavaPlugin implements Listener {
         score.setScore(lastTPS);
     }
 
+    /*
     private void updateTime(Player player) {
         Scoreboard scoreboard = getScoreboard(player);
         Objective objective = scoreboard.getObjective(SIDEBOARD_OBJ);
@@ -134,6 +140,31 @@ public class Statboard extends JavaPlugin implements Listener {
         }
         score.setScore(time);
     }
+    */
+
+    private void updateFactionStats(Player player) {
+        Scoreboard scoreboard = getScoreboard(player);
+        Objective objective = scoreboard.getObjective(SIDEBOARD_OBJ);
+        UPlayer uPlayer = UPlayer.get(player);
+        Score score = objective.getScore(Scores.PLAYER_POWER);
+        score.setScore(uPlayer.getPowerRounded());
+        Faction faction = uPlayer.getFaction();
+        if (!faction.equals(FactionColls.get().getForWorld(player.getWorld().getName()).getNone())) {
+            score = objective.getScore(Scores.FACTION_LAND);
+            score.setScore(faction.getLandCount());
+            score = objective.getScore(Scores.FACTION_POWER);
+            score.setScore(faction.getPowerRounded());
+            score = objective.getScore(Scores.CITIZENS_ONLINE);
+            score.setScore(faction.getOnlinePlayers().size());
+        } else {
+            score = objective.getScore(Scores.FACTION_LAND);
+            score.setScore(0);
+            score = objective.getScore(Scores.FACTION_POWER);
+            score.setScore(0);
+            score = objective.getScore(Scores.CITIZENS_ONLINE);
+            score.setScore(0);
+        }
+    }
 
     private boolean setupEconomy() {
         RegisteredServiceProvider<Economy> economyProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
@@ -144,24 +175,11 @@ public class Statboard extends JavaPlugin implements Listener {
         return (economy != null);
     }
 
-    private void updatePlayersOnline() {
-        Player[] onlinePlayers = Bukkit.getOnlinePlayers();
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            Scoreboard scoreboard = getScoreboard(p);
-            Objective objective = scoreboard.getObjective(SIDEBOARD_OBJ);
-            Score score = objective.getScore(Scores.PLAYERS_ONLINE);
-            score.setScore(onlinePlayers.length);
-        }
-    }
-
-    private void updatePlayersInFaction(Faction faction) {
-        List<Player> players = faction.getOnlinePlayers();
-        for (Player player : players) {
-            Scoreboard scoreboard = getScoreboard(player);
-            Objective objective = scoreboard.getObjective(SIDEBOARD_OBJ);
-            Score score = objective.getScore(Scores.CITIZENS_ONLINE);
-            score.setScore(players.size());
-        }
+    private void updatePlayersOnline(Player player, int numberOnline) {
+        Scoreboard scoreboard = getScoreboard(player);
+        Objective objective = scoreboard.getObjective(SIDEBOARD_OBJ);
+        Score score = objective.getScore(Scores.PLAYERS_ONLINE);
+        score.setScore(numberOnline);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -176,7 +194,7 @@ public class Statboard extends JavaPlugin implements Listener {
         if (objective == null) {
             objective = scoreboard.registerNewObjective("health", Criterias.HEALTH);
             objective.setDisplaySlot(DisplaySlot.BELOW_NAME);
-            objective.setDisplayName("Health");
+            objective.setDisplayName(ChatColor.GREEN + "Health");
         }
 
         // Set up sideboard objective
@@ -185,24 +203,26 @@ public class Statboard extends JavaPlugin implements Listener {
         if (objective == null) {
             objective = scoreboard.registerNewObjective(SIDEBOARD_OBJ, "dummy");
             objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-            objective.setDisplayName(ChatColor.GREEN.toString() + ChatColor.BOLD + "www.MCPVE.com");
+            objective.setDisplayName(Scores.SERVER_NAME);
         }
 
-        updatePlayersOnline();
+        updatePlayersOnline(player, Bukkit.getOnlinePlayers().length);
 
         updateBalance(player);
 
-        updatePlayersInFaction(UPlayer.get(player).getFaction());
+        //updatePlayersInFaction(UPlayer.get(player).getFaction());
 
         updateTps(player);
 
-        updateTime(player);
+        //updateTime(player);
 
         updateStats(player);
 
         updateTracker(player);
 
         updatePing(player);
+
+        updateFactionStats(player);
     }
 
     private void updateBalance(Player player) {
@@ -213,6 +233,7 @@ public class Statboard extends JavaPlugin implements Listener {
         Objective obj = getScoreboard(player).getObjective(SIDEBOARD_OBJ);
         Score score = obj.getScore(Scores.MCMMO_POWER_LEVEL);
         score.setScore(ExperienceAPI.getPowerLevel(player));
+        /*
         score = obj.getScore(Scores.MCMMO_MINING);
         score.setScore(ExperienceAPI.getLevel(player, SkillType.MINING.toString()));
         score = obj.getScore(Scores.MCMMO_EXCAVATION);
@@ -225,6 +246,7 @@ public class Statboard extends JavaPlugin implements Listener {
         score.setScore(ExperienceAPI.getLevel(player, SkillType.ARCHERY.toString()));
         score = obj.getScore(Scores.MCMMO_SWORDS);
         score.setScore(ExperienceAPI.getLevel(player, SkillType.SWORDS.toString()));
+        */
     }
 
     private void updateTracker(Player player) {
@@ -233,37 +255,24 @@ public class Statboard extends JavaPlugin implements Listener {
         if (pvpStats != null) {
             Score score = obj.getScore(Scores.PVP_KILLS);
             score.setScore(pvpStats.getWins());
+            score = obj.getScore(Scores.PVP_STREAK);
+            score.setScore(pvpStats.getStreak());
+            score = obj.getScore(Scores.PVP_MAX_STREAK);
+            score.setScore(pvpStats.getMaxStreak());
+            score = obj.getScore(Scores.PVP_RATING);
+            score.setScore(pvpStats.getRating());
+            score = obj.getScore(Scores.PVP_MAX_RATING);
+            score.setScore(pvpStats.getMaxRating());
+            score = obj.getScore(Scores.PVP_DEATHS);
+            score.setScore(pvpStats.getLosses());
         }
+        /*
         Stat pveStats = pveTracker.loadRecord(player);
         if (pveStats != null) {
             Score score = obj.getScore(Scores.PVE_KILLS);
             score.setScore(pveStats.getWins());
         }
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void playerQuit(PlayerQuitEvent event) {
-        updatePlayersOnline();
-        scoreboardMap.remove(event.getPlayer());
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void factionMembershipChange(FactionsEventMembershipChange event) {
-        final Player player = Bukkit.getPlayerExact(event.getUPlayer().getName());
-        if (player == null) {
-            throw new IllegalStateException("Player should not be null!");
-        }
-
-        final Faction oldFaction = UPlayer.get(player).getFaction();
-        final Faction newFaction = event.getNewFaction();
-
-        Bukkit.getScheduler().runTask(this, new Runnable() {
-            @Override
-            public void run() {
-                updatePlayersInFaction(oldFaction);
-                updatePlayersInFaction(newFaction);
-            }
-        });
+        */
     }
 
     public Scoreboard getScoreboard(Player player) {
